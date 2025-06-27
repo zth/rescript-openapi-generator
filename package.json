@@ -1,0 +1,48 @@
+{
+  "name": "rescript-openapi-generator",
+  "version": "0.0.0",
+  "scripts": {
+    "res:build": "rescript",
+    "res:clean": "rescript clean",
+    "res:dev": "rescript -w",
+    "res:format": "rescript format -all",
+    "res:format:check": "rescript format -all -check",
+    "test": "ava"
+  },
+  "keywords": [
+    "rescript",
+    "openapi",
+    "swagger",
+    "codegen",
+    "client-generator",
+    "rest-api",
+    "typescript",
+    "type-safe"
+  ],
+  "author": "ReScript OpenAPI Generator Contributors",
+  "description": "Generate fully-typed, idiomatic ReScript clients from OpenAPI specifications",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rescript-openapi/rescript-openapi-generator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rescript-openapi/rescript-openapi-generator/issues"
+  },
+  "homepage": "https://github.com/rescript-openapi/rescript-openapi-generator#readme",
+  "license": "MIT",
+  "dependencies": {
+    "rescript": "^12.0.0-alpha.14",
+    "rescript-openapi": "^0.4.0",
+    "rescript-rest": "^1.2.0",
+    "rescript-schema": "^9.0.0"
+  },
+  "devDependencies": {
+    "@dzakh/rescript-ava": "latest",
+    "ava": "latest"
+  },
+  "ava": {
+    "files": [
+      "__tests__/**/*_test.res.mjs"
+    ]
+  }
+}
