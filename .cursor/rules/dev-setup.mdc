@@ -1,0 +1,6 @@
+---
+description: 
+globs: *
+alwaysApply: true
+---
+Always look in [AGENTS.md](mdc:AGENTS.md).

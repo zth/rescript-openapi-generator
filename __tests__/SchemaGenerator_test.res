@@ -1,7 +1,7 @@
 open Ava
 
 // Test the schema generator with the petstore OpenAPI spec
-asyncTest("should parse petstore schemas", async t => {
+asyncTest("should generate complete petstore module", async t => {
   // Read the petstore OpenAPI JSON
   // Note: In a real implementation, we'd read from file
   // For now, we'll use a minimal test schema
@@ -58,21 +58,32 @@ asyncTest("should parse petstore schemas", async t => {
     }
   }`
 
-  switch OpenApiGenerator.generateTypes(testOpenApiJson) {
-  | Error(msg) => t->Assert.fail(`Generation failed: ${msg}`)
-  | Ok(types) =>
-    // Should generate types for Category, PetStatus, and Pet
-    t->Assert.is(types->Array.length, 3)
+  let expectedModule = `// Generated ReScript types from OpenAPI specification
 
-    // Check that we have the expected type names
-    let typeNames = types->Array.map(({name}) => name)
-    t->Assert.is(typeNames->Array.includes("Category"), true)
-    t->Assert.is(typeNames->Array.includes("PetStatus"), true)
-    t->Assert.is(typeNames->Array.includes("Pet"), true)
+type category = {
+  id?: int,
+  name?: string,
+}
+
+type petStatus = @as("available") Available | @as("pending") Pending | @as("sold") Sold
+
+type pet = {
+  name: string,
+  photoUrls: array<string>,
+  category?: category,
+  id?: int,
+  status?: petStatus,
+}`
+
+  switch OpenApiGenerator.generateModule(testOpenApiJson) {
+  | Error(msg) => t->Assert.fail(`Generation failed: ${msg}`)
+  | Ok(moduleCode) =>
+    // Compare the entire generated module
+    t->Assert.is(moduleCode, expectedModule)
   }
 })
 
-test("should parse simple object schema", t => {
+test("should generate complete simple object module", t => {
   let simpleSchema = `{
     "openapi": "3.0.4",
     "info": {"title": "Test", "version": "1.0.0"},
@@ -90,20 +101,21 @@ test("should parse simple object schema", t => {
     }
   }`
 
-  switch OpenApiGenerator.generateTypes(simpleSchema) {
-  | Error(msg) => t->Assert.fail(`Generation failed: ${msg}`)
-  | Ok(types) =>
-    t->Assert.is(types->Array.length, 1)
-    let generatedType = types->Array.get(0)->Option.getOrThrow
-    t->Assert.is(generatedType.name, "SimpleObject")
+  let expectedModule = `// Generated ReScript types from OpenAPI specification
 
-    // The generated definition should contain the fields
-    t->Assert.is(generatedType.definition->String.includes("name:"), true)
-    t->Assert.is(generatedType.definition->String.includes("age?:"), true)
+type simpleObject = {
+  name: string,
+  age?: int,
+}`
+
+  switch OpenApiGenerator.generateModule(simpleSchema) {
+  | Error(msg) => t->Assert.fail(`Generation failed: ${msg}`)
+  | Ok(moduleCode) =>
+    t->Assert.is(moduleCode, expectedModule)
   }
 })
 
-test("should parse enum schema", t => {
+test("should generate complete enum module", t => {
   let enumSchema = `{
     "openapi": "3.0.4", 
     "info": {"title": "Test", "version": "1.0.0"},
@@ -117,17 +129,14 @@ test("should parse enum schema", t => {
     }
   }`
 
-  switch OpenApiGenerator.generateTypes(enumSchema) {
-  | Error(msg) => t->Assert.fail(`Generation failed: ${msg}`)
-  | Ok(types) =>
-    t->Assert.is(types->Array.length, 1)
-    let generatedType = types->Array.get(0)->Option.getOrThrow
-    t->Assert.is(generatedType.name, "Status")
+  let expectedModule = `// Generated ReScript types from OpenAPI specification
 
-    // Should generate a regular variant
-    t->Assert.is(generatedType.definition->String.includes("Active"), true)
-    t->Assert.is(generatedType.definition->String.includes("Inactive"), true)
-    t->Assert.is(generatedType.definition->String.includes("Pending"), true)
+type status = @as("active") Active | @as("inactive") Inactive | @as("pending") Pending`
+
+  switch OpenApiGenerator.generateModule(enumSchema) {
+  | Error(msg) => t->Assert.fail(`Generation failed: ${msg}`)
+  | Ok(moduleCode) =>
+    t->Assert.is(moduleCode, expectedModule)
   }
 })
 
@@ -138,14 +147,18 @@ test("should handle empty components", t => {
     "components": {}
   }`
 
-  switch OpenApiGenerator.generateTypes(emptySchema) {
+  let expectedModule = `// Generated ReScript types from OpenAPI specification
+
+`
+
+  switch OpenApiGenerator.generateModule(emptySchema) {
   | Error(_) => t->Assert.fail("Should handle empty components")
-  | Ok(types) => t->Assert.is(types->Array.length, 0)
+  | Ok(moduleCode) => t->Assert.is(moduleCode, expectedModule)
   }
 })
 
-test("should generate complete module", t => {
-  let simpleSchema = `{
+test("should generate complex module with inline enums", t => {
+  let complexSchema = `{
     "openapi": "3.0.4",
     "info": {"title": "Test", "version": "1.0.0"},
     "components": {
@@ -154,23 +167,42 @@ test("should generate complete module", t => {
           "type": "object", 
           "properties": {
             "id": {"type": "integer"},
-            "name": {"type": "string"}
+            "name": {"type": "string"},
+            "role": {
+              "type": "string",
+              "enum": ["admin", "user", "guest"]
+            },
+            "preferences": {
+              "type": "object",
+              "properties": {
+                "theme": {
+                  "type": "string",
+                  "enum": ["light", "dark"]
+                },
+                "notifications": {"type": "boolean"}
+              }
+            }
           },
-          "required": ["id"]
+          "required": ["id", "name"]
         }
       }
     }
   }`
 
-  switch OpenApiGenerator.generateModule(simpleSchema) {
+  let expectedModule = `// Generated ReScript types from OpenAPI specification
+
+type userRole = @as("admin") Admin | @as("user") User | @as("guest") Guest
+
+type user = {
+  id: int,
+  name: string,
+  preferences?: unknown,
+  role?: userRole,
+}`
+
+  switch OpenApiGenerator.generateModule(complexSchema) {
   | Error(msg) => t->Assert.fail(`Module generation failed: ${msg}`)
   | Ok(moduleCode) =>
-    // Should include header comment
-    t->Assert.is(moduleCode->String.includes("Generated ReScript types"), true)
-
-    // Should include type definition
-    t->Assert.is(moduleCode->String.includes("type user"), true)
-    t->Assert.is(moduleCode->String.includes("id:"), true)
-    t->Assert.is(moduleCode->String.includes("name?:"), true)
+    t->Assert.is(moduleCode, expectedModule)
   }
 })

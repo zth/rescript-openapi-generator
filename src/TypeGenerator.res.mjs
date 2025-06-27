@@ -17,6 +17,78 @@ function toCamelCase(name) {
   return Stdlib_Option.getOr(name[0], "").toLowerCase() + name.slice(1);
 }
 
+let reservedWords = [
+  "and",
+  "as",
+  "assert",
+  "begin",
+  "class",
+  "constraint",
+  "do",
+  "done",
+  "downto",
+  "else",
+  "end",
+  "exception",
+  "external",
+  "false",
+  "for",
+  "fun",
+  "function",
+  "functor",
+  "if",
+  "in",
+  "include",
+  "inherit",
+  "initializer",
+  "lazy",
+  "let",
+  "match",
+  "method",
+  "module",
+  "mutable",
+  "new",
+  "object",
+  "of",
+  "open",
+  "or",
+  "private",
+  "rec",
+  "sig",
+  "struct",
+  "then",
+  "to",
+  "true",
+  "try",
+  "type",
+  "val",
+  "virtual",
+  "when",
+  "while",
+  "with",
+  "mod",
+  "land",
+  "lor",
+  "lxor",
+  "lsl",
+  "lsr",
+  "asr"
+];
+
+function handleReservedWord(fieldName) {
+  if (reservedWords.includes(fieldName)) {
+    return [
+      fieldName + "_",
+      "@as(\"" + fieldName + "\")"
+    ];
+  } else {
+    return [
+      fieldName,
+      undefined
+    ];
+  }
+}
+
 function mapPrimitiveType(schemaType) {
   if (schemaType === "boolean") {
     return "Bool";
@@ -96,7 +168,8 @@ function convertPropertySchema(baseName, name, propSchema, isRequired) {
       _0: {
         name: name,
         type_: fieldType,
-        required: isRequired
+        required: isRequired,
+        attribute: undefined
       }
     };
   }
@@ -108,7 +181,8 @@ function convertPropertySchema(baseName, name, propSchema, isRequired) {
         TAG: "Reference",
         _0: toCamelCase(enumTypeName)
       },
-      required: isRequired
+      required: isRequired,
+      attribute: undefined
     }));
   }
   let typeArrayable = propSchema.type;
@@ -150,21 +224,27 @@ function convertPropertySchema(baseName, name, propSchema, isRequired) {
     _0: {
       name: name,
       type_: finalType,
-      required: isRequired
+      required: isRequired,
+      attribute: undefined
     }
   };
 }
 
 function convertProperty(baseName, name, propDefinition, isRequired) {
+  let match = handleReservedWord(name);
+  let attribute = match[1];
   let propSchema = JSONSchema7.Definition.classify(propDefinition);
-  if (propSchema.TAG === "Schema") {
-    return convertPropertySchema(baseName, name, propSchema._0, isRequired);
-  } else {
-    return {
+  let result;
+  result = propSchema.TAG === "Schema" ? convertPropertySchema(baseName, match[0], propSchema._0, isRequired) : ({
       TAG: "Error",
       _0: "Boolean schema definitions not supported"
-    };
-  }
+    });
+  return Stdlib_Result.map(result, field => ({
+    name: field.name,
+    type_: field.type_,
+    required: field.required,
+    attribute: attribute
+  }));
 }
 
 function convertObjectSchema(baseName, schema, requiredFields) {
@@ -247,7 +327,13 @@ function convertSchema(namedSchema) {
 
 function generateExtractedEnumDefinitions() {
   return extractedEnums.contents.map(param => {
-    let variantString = param.variants.join(" | ");
+    let variantString = param.variants.map((variant, index) => {
+      if (index === 0) {
+        return "| " + variant;
+      } else {
+        return "| " + variant;
+      }
+    }).join(" ");
     return "type " + toCamelCase(param.name) + " = " + variantString;
   });
 }
@@ -281,8 +367,9 @@ function generateTypeDefinition(name, rescriptType) {
           let fields = type_._0;
           let requiredFields = fields.filter(field => field.required);
           let optionalFields = fields.filter(field => !field.required);
-          let sortedOptionalFields = optionalFields.toSorted((a, b) => Primitive_string.compare(a.name, b.name));
-          let sortedFields = requiredFields.concat(sortedOptionalFields);
+          let copied = optionalFields.slice();
+          copied.sort((a, b) => Primitive_string.compare(a.name, b.name));
+          let sortedFields = requiredFields.concat(copied);
           let fieldStrings = sortedFields.map(field => {
             let optionalMarker = field.required ? "" : "?";
             let fieldType;
@@ -292,12 +379,20 @@ function generateTypeDefinition(name, rescriptType) {
               let innerType = field.type_;
               fieldType = typeof innerType !== "object" || innerType.TAG !== "Option" ? innerType : innerType._0;
             }
-            return "  " + field.name + optionalMarker + ": " + typeToString(fieldType) + ",";
+            let attr = field.attribute;
+            let attributeString = attr !== undefined ? attr + " " : "";
+            return "  " + attributeString + field.name + optionalMarker + ": " + typeToString(fieldType) + ",";
           });
           return "{\n" + fieldStrings.join("\n") + "\n}";
         case "Variant" :
-          let variantStrings = type_._0.map(v => v);
-          return variantStrings.join(" | ");
+          let variantStrings = type_._0.map((variant, index) => {
+            if (index === 0) {
+              return "| " + variant;
+            } else {
+              return "| " + variant;
+            }
+          });
+          return variantStrings.join(" ");
         case "Reference" :
           return type_._0;
       }
@@ -309,6 +404,8 @@ function generateTypeDefinition(name, rescriptType) {
 export {
   extractedEnums,
   toCamelCase,
+  reservedWords,
+  handleReservedWord,
   mapPrimitiveType,
   generateVariantNames,
   generateVariantFromEnum,

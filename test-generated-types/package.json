@@ -1,0 +1,9 @@
+{
+  "name": "test-generated-types",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "rescript": "^12.0.0-alpha.14"
+  }
+}

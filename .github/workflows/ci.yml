@@ -64,10 +64,51 @@ jobs:
       - name: Check ReScript formatting
         run: yarn res:build && yarn res:format:check
 
+  type-generation:
+    name: Type Generation Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build main project
+        run: yarn res:build
+
+      - name: Generate Petstore types
+        run: node src/GeneratePetstoreTypes.res.mjs
+
+      - name: Install test project dependencies
+        run: cd test-generated-types && yarn install --frozen-lockfile
+
+      - name: Compile generated types
+        run: cd test-generated-types && npx rescript
+
+      - name: Test generated types
+        run: cd test-generated-types && node src/TestPetstoreTypes.js
+
+      - name: Verify generated types are ignored by git
+        run: |
+          if git ls-files --error-unmatch test-generated-types/src/GeneratedPetstoreTypes.res >/dev/null 2>&1; then
+            echo "❌ Generated file should be gitignored but is tracked by git"
+            exit 1
+          else
+            echo "✅ Generated file is properly gitignored"
+          fi
+
   build:
     name: Build Check
     runs-on: ubuntu-latest
-    needs: [test, lint]
+    needs: [test, lint, type-generation]
 
     steps:
       - name: Checkout code

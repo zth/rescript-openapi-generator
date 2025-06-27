@@ -17,6 +17,7 @@ and recordField = {
   name: string,
   type_: rescriptType,
   required: bool,
+  attribute: option<string>, // For @as attributes when using reserved words
 }
 
 // Type for extracted enum information
@@ -31,6 +32,24 @@ let extractedEnums: ref<array<extractedEnum>> = ref([])
 // Convert type name to camelCase
 let toCamelCase = (name: string): string => {
   name->String.get(0)->Option.getOr("")->String.toLowerCase ++ name->String.sliceToEnd(~start=1)
+}
+
+// List of ReScript reserved words that need escaping
+let reservedWords = [
+  "and", "as", "assert", "begin", "class", "constraint", "do", "done", "downto", "else", "end",
+  "exception", "external", "false", "for", "fun", "function", "functor", "if", "in", "include",
+  "inherit", "initializer", "lazy", "let", "match", "method", "module", "mutable", "new", "object",
+  "of", "open", "or", "private", "rec", "sig", "struct", "then", "to", "true", "try", "type", "val",
+  "virtual", "when", "while", "with", "mod", "land", "lor", "lxor", "lsl", "lsr", "asr"
+]
+
+// Handle reserved words by appending underscore and adding @as attribute
+let handleReservedWord = (fieldName: string): (string, option<string>) => {
+  if reservedWords->Array.includes(fieldName) {
+    (fieldName ++ "_", Some(`@as("${fieldName}")`))
+  } else {
+    (fieldName, None)
+  }
 }
 
 // Convert JSONSchema type to ReScript type
@@ -120,14 +139,14 @@ let convertPropertySchema = (
     let typeName = parts->Array.get(parts->Array.length - 1)->Option.getOr("Unknown")
     let fieldType = Reference(toCamelCase(typeName))
     // Don't wrap in Option - we'll use ? syntax instead
-    Ok({name, type_: fieldType, required: isRequired})
+    Ok({name, type_: fieldType, required: isRequired, attribute: None})
   | None =>
     // Check for enum first (regardless of type)
     switch propSchema.enum {
     | Some(enumValues) =>
       // Extract inline enum as separate type and reference it
       extractInlineEnum(baseName, name, enumValues)->Result.map(enumTypeName => {
-        {name, type_: Reference(toCamelCase(enumTypeName)), required: isRequired}
+        {name, type_: Reference(toCamelCase(enumTypeName)), required: isRequired, attribute: None}
       })
     | None =>
       // Handle direct types
@@ -153,7 +172,7 @@ let convertPropertySchema = (
           | (_, rescriptType) => rescriptType
           }
           // Don't wrap in Option - we'll use ? syntax instead
-          Ok({name, type_: finalType, required: isRequired})
+          Ok({name, type_: finalType, required: isRequired, attribute: None})
         | Array(_) => Error("Union types not supported yet")
         }
       | None => Error(`Unsupported property schema for field: ${name}`)
@@ -169,11 +188,17 @@ let convertProperty = (
   propDefinition: JSONSchema7.definition,
   isRequired: bool,
 ): result<recordField, string> => {
+  // Handle reserved words
+  let (escapedName, attribute) = handleReservedWord(name)
+  
   // First classify the definition (it could be a schema or boolean)
-  switch propDefinition->JSONSchema7.Definition.classify {
+  let result = switch propDefinition->JSONSchema7.Definition.classify {
   | Boolean(_) => Error("Boolean schema definitions not supported")
-  | Schema(propSchema) => convertPropertySchema(baseName, name, propSchema, isRequired)
+  | Schema(propSchema) => convertPropertySchema(baseName, escapedName, propSchema, isRequired)
   }
+  
+  // Update the result to include the attribute
+  result->Result.map(field => {...field, attribute})
 }
 
 // Convert JSONSchema object to ReScript record type
@@ -250,7 +275,13 @@ let convertSchema = (namedSchema: SchemaParser.namedSchema): result<rescriptType
 // Generate extracted enum type definitions
 let generateExtractedEnumDefinitions = (): array<string> => {
   extractedEnums.contents->Array.map(({name, variants}) => {
-    let variantString = variants->Array.join(" | ")
+    let variantString = variants->Array.mapWithIndex((variant, index) => {
+      if index === 0 {
+        `| ${variant}`
+      } else {
+        `| ${variant}`
+      }
+    })->Array.join(" ")
     `type ${toCamelCase(name)} = ${variantString}`
   })
 }
@@ -275,8 +306,11 @@ let generateTypeDefinition = (name: string, rescriptType: rescriptType): string 
       // Sort fields: required first, then optional (alphabetically)
       let requiredFields = fields->Array.filter(field => field.required)
       let optionalFields = fields->Array.filter(field => !field.required)
-      let sortedOptionalFields =
-        optionalFields->Array.toSorted((a, b) => String.compare(a.name, b.name))
+      let sortedOptionalFields = {
+        let copied = optionalFields->Array.copy
+        copied->Array.sort((a, b) => String.compare(a.name, b.name))
+        copied
+      }
       let sortedFields = Array.concat(requiredFields, sortedOptionalFields)
 
       let fieldStrings = sortedFields->Array.map(field => {
@@ -290,12 +324,22 @@ let generateTypeDefinition = (name: string, rescriptType: rescriptType): string 
               | other => other
               }
             }
-        `  ${field.name}${optionalMarker}: ${typeToString(fieldType)},`
+        let attributeString = switch field.attribute {
+        | Some(attr) => attr ++ " "
+        | None => ""
+        }
+        `  ${attributeString}${field.name}${optionalMarker}: ${typeToString(fieldType)},`
       })
       "{\n" ++ fieldStrings->Array.join("\n") ++ "\n}"
     | Variant(variants) =>
-      let variantStrings = variants->Array.map(v => v)
-      variantStrings->Array.join(" | ")
+      let variantStrings = variants->Array.mapWithIndex((variant, index) => {
+        if index === 0 {
+          `| ${variant}`
+        } else {
+          `| ${variant}`
+        }
+      })
+      variantStrings->Array.join(" ")
     | Unknown => "unknown"
     }
   }
