@@ -93,6 +93,18 @@ jobs:
       - name: Compile generated types
         run: cd test-generated-types && npx rescript
 
+      - name: Check for uncommitted generated files
+        run: |
+          if [ -n "$(git status --porcelain test-generated-types/src/GeneratedPetstoreTypes.res)" ]; then
+            echo "❌ Generated file has uncommitted changes after regeneration:"
+            git diff test-generated-types/src/GeneratedPetstoreTypes.res
+            echo ""
+            echo "Please run 'node src/GeneratePetstoreTypes.res.mjs' locally and commit the updated file."
+            exit 1
+          else
+            echo "✅ Generated file is up to date"
+          fi
+
   build:
     name: Build Check
     runs-on: ubuntu-latest
