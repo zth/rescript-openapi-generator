@@ -5,6 +5,7 @@ node_modules/
 
 # ReScript
 *.bs.js
+*.res.mjs
 *.gen.ts
 .bsb.lock
 

@@ -36,11 +36,61 @@ let toCamelCase = (name: string): string => {
 
 // List of ReScript reserved words that need escaping
 let reservedWords = [
-  "and", "as", "assert", "begin", "class", "constraint", "do", "done", "downto", "else", "end",
-  "exception", "external", "false", "for", "fun", "function", "functor", "if", "in", "include",
-  "inherit", "initializer", "lazy", "let", "match", "method", "module", "mutable", "new", "object",
-  "of", "open", "or", "private", "rec", "sig", "struct", "then", "to", "true", "try", "type", "val",
-  "virtual", "when", "while", "with", "mod", "land", "lor", "lxor", "lsl", "lsr", "asr"
+  "and",
+  "as",
+  "assert",
+  "begin",
+  "class",
+  "constraint",
+  "do",
+  "done",
+  "downto",
+  "else",
+  "end",
+  "exception",
+  "external",
+  "false",
+  "for",
+  "fun",
+  "function",
+  "functor",
+  "if",
+  "in",
+  "include",
+  "inherit",
+  "initializer",
+  "lazy",
+  "let",
+  "match",
+  "method",
+  "module",
+  "mutable",
+  "new",
+  "object",
+  "of",
+  "open",
+  "or",
+  "private",
+  "rec",
+  "sig",
+  "struct",
+  "then",
+  "to",
+  "true",
+  "try",
+  "type",
+  "val",
+  "virtual",
+  "when",
+  "while",
+  "with",
+  "mod",
+  "land",
+  "lor",
+  "lxor",
+  "lsl",
+  "lsr",
+  "asr",
 ]
 
 // Handle reserved words by appending underscore and adding @as attribute
@@ -190,13 +240,13 @@ let convertProperty = (
 ): result<recordField, string> => {
   // Handle reserved words
   let (escapedName, attribute) = handleReservedWord(name)
-  
+
   // First classify the definition (it could be a schema or boolean)
   let result = switch propDefinition->JSONSchema7.Definition.classify {
   | Boolean(_) => Error("Boolean schema definitions not supported")
   | Schema(propSchema) => convertPropertySchema(baseName, escapedName, propSchema, isRequired)
   }
-  
+
   // Update the result to include the attribute
   result->Result.map(field => {...field, attribute})
 }
@@ -275,13 +325,16 @@ let convertSchema = (namedSchema: SchemaParser.namedSchema): result<rescriptType
 // Generate extracted enum type definitions
 let generateExtractedEnumDefinitions = (): array<string> => {
   extractedEnums.contents->Array.map(({name, variants}) => {
-    let variantString = variants->Array.mapWithIndex((variant, index) => {
-      if index === 0 {
-        `| ${variant}`
-      } else {
-        `| ${variant}`
-      }
-    })->Array.join(" ")
+    let variantString =
+      variants
+      ->Array.mapWithIndex((variant, index) => {
+        if index === 0 {
+          `| ${variant}`
+        } else {
+          `| ${variant}`
+        }
+      })
+      ->Array.join(" ")
     `type ${toCamelCase(name)} = ${variantString}`
   })
 }

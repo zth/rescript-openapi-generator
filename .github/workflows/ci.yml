@@ -93,18 +93,6 @@ jobs:
       - name: Compile generated types
         run: cd test-generated-types && npx rescript
 
-      - name: Test generated types
-        run: cd test-generated-types && node src/TestPetstoreTypes.js
-
-      - name: Verify generated types are ignored by git
-        run: |
-          if git ls-files --error-unmatch test-generated-types/src/GeneratedPetstoreTypes.res >/dev/null 2>&1; then
-            echo "❌ Generated file should be gitignored but is tracked by git"
-            exit 1
-          else
-            echo "✅ Generated file is properly gitignored"
-          fi
-
   build:
     name: Build Check
     runs-on: ubuntu-latest

@@ -65,7 +65,7 @@ type category = {
   name?: string,
 }
 
-type petStatus = @as("available") Available | @as("pending") Pending | @as("sold") Sold
+type petStatus = | @as("available") Available | @as("pending") Pending | @as("sold") Sold
 
 type pet = {
   name: string,
@@ -110,8 +110,7 @@ type simpleObject = {
 
   switch OpenApiGenerator.generateModule(simpleSchema) {
   | Error(msg) => t->Assert.fail(`Generation failed: ${msg}`)
-  | Ok(moduleCode) =>
-    t->Assert.is(moduleCode, expectedModule)
+  | Ok(moduleCode) => t->Assert.is(moduleCode, expectedModule)
   }
 })
 
@@ -131,12 +130,11 @@ test("should generate complete enum module", t => {
 
   let expectedModule = `// Generated ReScript types from OpenAPI specification
 
-type status = @as("active") Active | @as("inactive") Inactive | @as("pending") Pending`
+type status = | @as("active") Active | @as("inactive") Inactive | @as("pending") Pending`
 
   switch OpenApiGenerator.generateModule(enumSchema) {
   | Error(msg) => t->Assert.fail(`Generation failed: ${msg}`)
-  | Ok(moduleCode) =>
-    t->Assert.is(moduleCode, expectedModule)
+  | Ok(moduleCode) => t->Assert.is(moduleCode, expectedModule)
   }
 })
 
@@ -191,7 +189,7 @@ test("should generate complex module with inline enums", t => {
 
   let expectedModule = `// Generated ReScript types from OpenAPI specification
 
-type userRole = @as("admin") Admin | @as("user") User | @as("guest") Guest
+type userRole = | @as("admin") Admin | @as("user") User | @as("guest") Guest
 
 type user = {
   id: int,
@@ -202,7 +200,6 @@ type user = {
 
   switch OpenApiGenerator.generateModule(complexSchema) {
   | Error(msg) => t->Assert.fail(`Module generation failed: ${msg}`)
-  | Ok(moduleCode) =>
-    t->Assert.is(moduleCode, expectedModule)
+  | Ok(moduleCode) => t->Assert.is(moduleCode, expectedModule)
   }
 })

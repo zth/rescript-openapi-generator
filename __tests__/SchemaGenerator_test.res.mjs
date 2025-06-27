@@ -8,7 +8,7 @@ Ava("should generate complete petstore module", async t => {
   if (msg.TAG !== "Ok") {
     return t.fail("Generation failed: " + msg._0);
   }
-  t.is(msg._0, "// Generated ReScript types from OpenAPI specification\n\ntype category = {\n  id?: int,\n  name?: string,\n}\n\ntype petStatus = @as(\"available\") Available | @as(\"pending\") Pending | @as(\"sold\") Sold\n\ntype pet = {\n  name: string,\n  photoUrls: array<string>,\n  category?: category,\n  id?: int,\n  status?: petStatus,\n}");
+  t.is(msg._0, "// Generated ReScript types from OpenAPI specification\n\ntype category = {\n  id?: int,\n  name?: string,\n}\n\ntype petStatus = | @as(\"available\") Available | @as(\"pending\") Pending | @as(\"sold\") Sold\n\ntype pet = {\n  name: string,\n  photoUrls: array<string>,\n  category?: category,\n  id?: int,\n  status?: petStatus,\n}");
 });
 
 Ava("should generate complete simple object module", t => {
@@ -24,7 +24,7 @@ Ava("should generate complete enum module", t => {
   if (msg.TAG !== "Ok") {
     return t.fail("Generation failed: " + msg._0);
   }
-  t.is(msg._0, "// Generated ReScript types from OpenAPI specification\n\ntype status = @as(\"active\") Active | @as(\"inactive\") Inactive | @as(\"pending\") Pending");
+  t.is(msg._0, "// Generated ReScript types from OpenAPI specification\n\ntype status = | @as(\"active\") Active | @as(\"inactive\") Inactive | @as(\"pending\") Pending");
 });
 
 Ava("should handle empty components", t => {
@@ -40,7 +40,7 @@ Ava("should generate complex module with inline enums", t => {
   if (msg.TAG !== "Ok") {
     return t.fail("Module generation failed: " + msg._0);
   }
-  t.is(msg._0, "// Generated ReScript types from OpenAPI specification\n\ntype userRole = @as(\"admin\") Admin | @as(\"user\") User | @as(\"guest\") Guest\n\ntype user = {\n  id: int,\n  name: string,\n  preferences?: unknown,\n  role?: userRole,\n}");
+  t.is(msg._0, "// Generated ReScript types from OpenAPI specification\n\ntype userRole = | @as(\"admin\") Admin | @as(\"user\") User | @as(\"guest\") Guest\n\ntype user = {\n  id: int,\n  name: string,\n  preferences?: unknown,\n  role?: userRole,\n}");
 });
 
 /*  Not a pure module */

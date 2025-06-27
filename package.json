@@ -7,7 +7,8 @@
     "res:dev": "rescript -w",
     "res:format": "rescript format -all",
     "res:format:check": "rescript format -all -check",
-    "test": "ava"
+    "test": "ava",
+    "prepare": "husky"
   },
   "keywords": [
     "rescript",
@@ -41,12 +42,17 @@
   },
   "devDependencies": {
     "@dzakh/rescript-ava": "latest",
-    "ava": "latest"
+    "ava": "latest",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.2"
   },
   "ava": {
     "files": [
       "__tests__/**/*_test.res.mjs"
     ]
+  },
+  "lint-staged": {
+    "*.res": "rescript format"
   },
   "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"
 }
